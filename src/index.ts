@@ -6,7 +6,7 @@ export type FTSConfig = {
   /**
    * INTEGER column used for FTS rowid value. Defaults to id
    */
-  idColumn: string | undefined;
+  idColumn?: string;
   columns: string[];
 };
 
@@ -55,23 +55,47 @@ export default function fts5Table(config: FTSConfig): () => string {
     throw new Error("Table or columns are empty, please provide them");
   }
 
-  Handlebars.registerHelper("commaSeparated", (items: string[], options: HelperOptions) => {
-    if (!items || items.length === 0) {
-      return "";
-    }
-
-    let result = "";
-    for (let i = 0; i < items.length; i++) {
-      result += options.fn(items[i]);
-      if (i < items.length - 1) {
-        result += ", ";
+  Handlebars.registerHelper(
+    "commaSeparated",
+    (items: string[], options: HelperOptions) => {
+      if (!items || items.length === 0) {
+        return "";
       }
-    }
-    return result;
-  });
+
+      let result = "";
+      for (let i = 0; i < items.length; i++) {
+        result += options.fn(items[i]);
+        if (i < items.length - 1) {
+          result += ", ";
+        }
+      }
+      return result;
+    },
+  );
   const template = Handlebars.compile(virtualTable + triggers);
 
   return () => {
     return template(config);
   };
 }
+
+export function fts5TableFromAstroDb<
+  C extends keyof D["tables"][T]["columns"],
+  T extends keyof D["tables"],
+  D extends { tables: Record<string, { columns: Record<string, unknown> }> },
+>(db: D, config: { table: T; idColumn?: string; columns: C[] }) {
+  return fts5Table({
+    columns: config.columns as string[],
+    table: config.table as string,
+    idColumn: config.idColumn,
+  });
+}
+
+fts5TableFromAstroDb(
+  { tables: { test: { columns: { column1: {} } } } },
+  {
+    table: "test",
+    columns: ["column1"],
+    idColumn: "id",
+  },
+);
