@@ -1,6 +1,6 @@
 {
   "name": "sqlite-fts-util",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "utility function to help generate SQLite fts5 schema",
   "type": "module",
   "scripts": {
@@ -11,7 +11,11 @@
     "format": "prettier --write \"{src,apps,libs,tests,bin}/**/*.{ts,mjs}\"",
     "lint": "eslint \"{src,apps,libs,tests,bin}/**/*.{ts,mjs}\" --fix --max-warnings 0"
   },
-  "keywords": ["SQLite", "fts5", "turso"],
+  "keywords": [
+    "SQLite",
+    "fts5",
+    "turso"
+  ],
   "author": "JayJamieson",
   "license": "MIT",
   "repository": {
@@ -20,7 +24,12 @@
   "exports": "./dist/index.js",
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
-  "files": ["dist", "README.md", "LICENCE", "package.json"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENCE",
+    "package.json"
+  ],
   "devDependencies": {
     "@types/node": "^20.14.2",
     "@typescript-eslint/eslint-plugin": "^7.12.0",

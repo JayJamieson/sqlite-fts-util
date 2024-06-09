@@ -6,9 +6,18 @@ export type FTSConfig = {
   /**
    * INTEGER column used for FTS rowid value. Defaults to id
    */
-  idColumn: string | undefined;
+  idColumn?: string;
   columns: string[];
 };
+
+/**
+ * Astro DB like shape to help with type safety
+ */
+type AstroDbPartial = {
+  tables: Record<string, { columns: Record<string, unknown> }>;
+};
+
+type AstroTablePartial = AstroDbPartial["tables"];
 
 const virtualTable = `CREATE VIRTUAL TABLE {{table}}_fts USING fts5(
   {{#each columns}}
@@ -41,6 +50,21 @@ BEGIN
   VALUES (new.{{idColumn}}, {{#commaSeparated columns}}new.{{this}}{{/commaSeparated}});
 END;`;
 
+const commaSeparatedHelper = (items: string[], options: HelperOptions) => {
+  if (!items || items.length === 0) {
+    return "";
+  }
+
+  let result = "";
+  for (let i = 0; i < items.length; i++) {
+    result += options.fn(items[i]);
+    if (i < items.length - 1) {
+      result += ", ";
+    }
+  }
+  return result;
+};
+
 export default function fts5Table(config: FTSConfig): () => string {
   if (!config) {
     throw new Error("Missing config");
@@ -55,23 +79,22 @@ export default function fts5Table(config: FTSConfig): () => string {
     throw new Error("Table or columns are empty, please provide them");
   }
 
-  Handlebars.registerHelper("commaSeparated", (items: string[], options: HelperOptions) => {
-    if (!items || items.length === 0) {
-      return "";
-    }
-
-    let result = "";
-    for (let i = 0; i < items.length; i++) {
-      result += options.fn(items[i]);
-      if (i < items.length - 1) {
-        result += ", ";
-      }
-    }
-    return result;
-  });
+  Handlebars.registerHelper("commaSeparated", commaSeparatedHelper);
   const template = Handlebars.compile(virtualTable + triggers);
 
   return () => {
     return template(config);
   };
+}
+
+export function fts5TableFromAstroDb<
+  C extends keyof AstroTablePartial[T]["columns"],
+  T extends keyof AstroTablePartial,
+  D extends AstroDbPartial,
+>(_db: D, config: { table: T; idColumn?: string; columns: C[] }) {
+  return fts5Table({
+    columns: config.columns as string[],
+    table: config.table as string,
+    idColumn: config.idColumn,
+  });
 }
