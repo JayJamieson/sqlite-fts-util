@@ -10,6 +10,15 @@ export type FTSConfig = {
   columns: string[];
 };
 
+/**
+ * Astro DB like shape to help with type safety
+ */
+type AstroDbPartial = {
+  tables: Record<string, { columns: Record<string, unknown> }>;
+};
+
+type AstroTablePartial = AstroDbPartial["tables"];
+
 const virtualTable = `CREATE VIRTUAL TABLE {{table}}_fts USING fts5(
   {{#each columns}}
   {{this}},
@@ -41,6 +50,21 @@ BEGIN
   VALUES (new.{{idColumn}}, {{#commaSeparated columns}}new.{{this}}{{/commaSeparated}});
 END;`;
 
+const commaSeparatedHelper = (items: string[], options: HelperOptions) => {
+  if (!items || items.length === 0) {
+    return "";
+  }
+
+  let result = "";
+  for (let i = 0; i < items.length; i++) {
+    result += options.fn(items[i]);
+    if (i < items.length - 1) {
+      result += ", ";
+    }
+  }
+  return result;
+};
+
 export default function fts5Table(config: FTSConfig): () => string {
   if (!config) {
     throw new Error("Missing config");
@@ -55,23 +79,7 @@ export default function fts5Table(config: FTSConfig): () => string {
     throw new Error("Table or columns are empty, please provide them");
   }
 
-  Handlebars.registerHelper(
-    "commaSeparated",
-    (items: string[], options: HelperOptions) => {
-      if (!items || items.length === 0) {
-        return "";
-      }
-
-      let result = "";
-      for (let i = 0; i < items.length; i++) {
-        result += options.fn(items[i]);
-        if (i < items.length - 1) {
-          result += ", ";
-        }
-      }
-      return result;
-    },
-  );
+  Handlebars.registerHelper("commaSeparated", commaSeparatedHelper);
   const template = Handlebars.compile(virtualTable + triggers);
 
   return () => {
@@ -80,22 +88,13 @@ export default function fts5Table(config: FTSConfig): () => string {
 }
 
 export function fts5TableFromAstroDb<
-  C extends keyof D["tables"][T]["columns"],
-  T extends keyof D["tables"],
-  D extends { tables: Record<string, { columns: Record<string, unknown> }> },
->(db: D, config: { table: T; idColumn?: string; columns: C[] }) {
+  C extends keyof AstroTablePartial[T]["columns"],
+  T extends keyof AstroTablePartial,
+  D extends AstroDbPartial,
+>(_db: D, config: { table: T; idColumn?: string; columns: C[] }) {
   return fts5Table({
     columns: config.columns as string[],
     table: config.table as string,
     idColumn: config.idColumn,
   });
 }
-
-fts5TableFromAstroDb(
-  { tables: { test: { columns: { column1: {} } } } },
-  {
-    table: "test",
-    columns: ["column1"],
-    idColumn: "id",
-  },
-);
