@@ -1,5 +1,9 @@
 import Handlebars, { type HelperOptions } from "handlebars";
 
+const validTokenizers = new RegExp(
+  "^(porter ascii|porter unicode61|unicode61|ascii|porter|trigram)$",
+);
+
 export type FTSConfig = {
   table: string;
 
@@ -16,7 +20,10 @@ export type FTSConfig = {
    *
    * @example tokenize: "unicode61 remove_diacritics 0 tokenchars '-_'"
    */
-  tokenize?: string;
+  tokenize?: {
+    tokenizer: string;
+    options?: string;
+  };
 
   /**
    * Configure an additional prefix index of n size
@@ -44,7 +51,7 @@ const virtualTable = `CREATE VIRTUAL TABLE {{table}}_fts USING fts5(
   prefix='{{prefix}}',
   {{/if}}
   {{#if tokenize}}
-  tokenize='{{tokenize}}',
+  tokenize="{{{tokenize}}}",
   {{/if}}
   content='{{table}}',
   content_rowid='{{idColumn}}'
@@ -99,9 +106,21 @@ export default function fts5Table(config: FTSConfig): () => string {
   config.idColumn = idColumn;
 
   let prefix = "";
+  let tokenize = "";
 
   if (config.prefix !== undefined) {
     prefix = config.prefix.join(" ");
+  }
+
+  if (config.tokenize !== undefined) {
+    if (!validTokenizers.test(config.tokenize.tokenizer)) {
+      throw new Error(`Invalid tokenizer: ${config.tokenize.tokenizer}`);
+    }
+
+    const tokenizeOptions = config.tokenize.options
+      ? config.tokenize.options.trim()
+      : "";
+    tokenize = `${config.tokenize.tokenizer.trim()} ${tokenizeOptions}`.trim();
   }
 
   if (table.length === 0 || columns.length === 0) {
@@ -115,6 +134,7 @@ export default function fts5Table(config: FTSConfig): () => string {
     return template({
       ...config,
       prefix,
+      tokenize,
     });
   };
 }
