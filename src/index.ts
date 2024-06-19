@@ -8,6 +8,23 @@ export type FTSConfig = {
    */
   idColumn?: string;
   columns: string[];
+
+  /**
+   * Tokenizer setting
+   * See {@link https://sqlite.org/fts5.html#tokenizers}
+   * @example tokenize: "porter ascii"
+   *
+   * @example tokenize: "unicode61 remove_diacritics 0 tokenchars '-_'"
+   */
+  tokenize?: string;
+
+  /**
+   * Configure an additional prefix index of n size
+   * @example
+   * prefix: [2, 3] // will create a 2 char prefix index and 3 char prefix index
+   *
+   */
+  prefix?: number[];
 };
 
 /**
@@ -23,6 +40,12 @@ const virtualTable = `CREATE VIRTUAL TABLE {{table}}_fts USING fts5(
   {{#each columns}}
   {{this}},
   {{/each}}
+  {{#if prefix}}
+  prefix='{{prefix}}',
+  {{/if}}
+  {{#if tokenize}}
+  tokenize='{{tokenize}}',
+  {{/if}}
   content='{{table}}',
   content_rowid='{{idColumn}}'
 );
@@ -75,6 +98,12 @@ export default function fts5Table(config: FTSConfig): () => string {
   const idColumn = config.idColumn || "id";
   config.idColumn = idColumn;
 
+  let prefix = "";
+
+  if (config.prefix !== undefined) {
+    prefix = config.prefix.join(" ");
+  }
+
   if (table.length === 0 || columns.length === 0) {
     throw new Error("Table or columns are empty, please provide them");
   }
@@ -83,7 +112,10 @@ export default function fts5Table(config: FTSConfig): () => string {
   const template = Handlebars.compile(virtualTable + triggers);
 
   return () => {
-    return template(config);
+    return template({
+      ...config,
+      prefix,
+    });
   };
 }
 
