@@ -21,11 +21,22 @@ import fts5Table from "sqlite-fts-util";
 
 const sqlFTS = fts5Table({
   table: "recipes",
-  columns: ["title", "directions"]
+  columns: ["title", "directions"],
 });
 
 // render actual sql schema to a string
 const sql = sqlFTS();
+```
+
+Tokenizer and prefix index options can be optionally configured as needed.
+
+```ts
+const sqlFTS = fts5Table({
+  table: "recipes",
+  columns: ["title", "directions"],
+  prefix: [2, 3], // optionally configure prefix index of 2 and 3 char prefixes
+  tokenize: "porter ascii", // optionally configure tokenizer options
+});
 ```
 
 ### Astro DB
